@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>右昌店｜配件陳列分析</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f7f7f5;--white:#fff;--text:#1a1a1a;--text2:#444;--muted:#999;
+  --border:#e8e8e4;--border2:#d0d0cc;
+  --top-bg:#f0eff8;--top:#6c5ce7;--top-bd:#c8c2f0;
+  --gold-bg:#fff8ec;--gold:#e67e00;--gold-bd:#f5d9a0;
+  --mid-bg:#ecf4ff;--mid:#0066cc;--mid-bd:#aaccf0;
+  --bot-bg:#f4f4f2;--bot:#888;--bot-bd:#d8d8d4;
+  --green:#1a7f4b;--red:#c0392b;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans TC',sans-serif;font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+
+.app{display:flex;min-height:100vh}
+
+/* ── Sidebar ── */
+.sidebar{width:300px;flex-shrink:0;background:var(--white);border-right:1px solid var(--border2);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+.sb-header{padding:18px 18px 14px;border-bottom:1px solid var(--border)}
+.sb-header h2{font-size:13px;font-weight:800;letter-spacing:-.01em;margin-bottom:2px}
+.sb-header p{font-size:10px;color:var(--muted)}
+
+/* Period list */
+.period-list{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:5px;max-height:260px;overflow-y:auto}
+.period-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:background .15s;border:1px solid transparent;user-select:none}
+.period-item:hover{background:var(--bg)}
+.period-item.active{background:var(--gold-bg);border-color:var(--gold-bd)}
+.pi-dot{width:8px;height:8px;border-radius:50%;background:var(--border2);flex-shrink:0}
+.period-item.active .pi-dot{background:var(--gold)}
+.pi-label{flex:1;font-size:12px;font-weight:600;color:var(--text2)}
+.period-item.active .pi-label{color:var(--gold)}
+.pi-meta{font-size:10px;color:var(--muted)}
+.pi-del{width:18px;height:18px;border-radius:50%;background:none;border:none;color:transparent;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.period-item:hover .pi-del{color:var(--muted)}
+.pi-del:hover{background:#fde8e8!important;color:var(--red)!important}
+
+/* Upload area */
+.upload-area{padding:14px 18px;border-bottom:1px solid var(--border)}
+.upload-label{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:block}
+.drop-zone{border:2px dashed var(--border2);border-radius:10px;padding:18px 12px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg);position:relative}
+.drop-zone:hover,.drop-zone.drag{border-color:var(--gold);background:var(--gold-bg)}
+.drop-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.dz-icon{font-size:24px;margin-bottom:6px;display:block}
+.dz-text{font-size:12px;font-weight:600;color:var(--text2)}
+.dz-sub{font-size:10px;color:var(--muted);margin-top:3px}
+.period-input{width:100%;background:var(--white);border:1px solid var(--border2);border-radius:7px;font-size:12px;padding:7px 10px;outline:none;color:var(--text);font-family:inherit;transition:border-color .2s;margin-top:8px}
+.period-input:focus{border-color:var(--gold)}
+.parse-status{margin-top:8px;font-size:11px;padding:6px 10px;border-radius:7px;display:none}
+.parse-status.ok{display:block;background:#e6f5ec;color:var(--green);border:1px solid #b0e0c0}
+.parse-status.err{display:block;background:#fde8e8;color:var(--red);border:1px solid #f5c0c0}
+.parse-status.loading{display:block;background:var(--mid-bg);color:var(--mid);border:1px solid var(--mid-bd)}
+
+/* Filter settings */
+.filter-area{padding:12px 18px;border-bottom:1px solid var(--border)}
+.filter-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px;color:var(--text2)}
+.filter-row label{flex:1}
+.filter-row input[type=number]{width:80px;background:var(--bg);border:1px solid var(--border2);border-radius:5px;font-size:11px;padding:4px 7px;outline:none;font-family:inherit;color:var(--text);text-align:center}
+.filter-row input[type=number]:focus{border-color:var(--gold)}
+.filter-note{font-size:10px;color:var(--muted);line-height:1.5}
+
+/* Actions */
+.sb-actions{padding:14px 18px;border-top:1px solid var(--border);margin-top:auto}
+.btn-apply{width:100%;background:#1a1a1a;border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;padding:12px;cursor:pointer;font-family:inherit;transition:background .15s,transform .1s;margin-bottom:7px}
+.btn-apply:hover{background:#333;transform:translateY(-1px)}
+.btn-apply:active{transform:translateY(0)}
+.btn-clear{width:100%;background:none;border:1px solid var(--border2);border-radius:8px;color:var(--muted);font-size:11px;padding:8px;cursor:pointer;font-family:inherit;transition:all .15s}
+.btn-clear:hover{border-color:var(--red);color:var(--red);background:#fde8e8}
+.sb-hint{font-size:10px;color:var(--muted);text-align:center;margin-top:6px}
+
+/* ── Main ── */
+.main{flex:1;padding:30px 26px 80px;overflow-y:auto;min-width:0}
+
+/* Empty */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:400px;gap:12px;text-align:center;padding:40px}
+.empty-icon{font-size:48px;opacity:.3}
+.empty-state h3{font-size:17px;font-weight:700;color:var(--text2)}
+.empty-state p{font-size:12px;color:var(--muted);max-width:260px;line-height:1.6}
+.empty-steps{display:flex;flex-direction:column;gap:8px;margin-top:8px;text-align:left;max-width:280px}
+.step{display:flex;align-items:flex-start;gap:10px;font-size:12px;color:var(--text2)}
+.step-num{width:22px;height:22px;border-radius:50%;background:var(--gold);color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+
+/* Page header */
+.page-hd{margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid var(--text)}
+.page-hd h1{font-size:22px;font-weight:900;letter-spacing:-.03em;line-height:1;margin-bottom:4px}
+.page-hd h1 span{color:var(--gold)}
+.page-hd p{font-size:11px;color:var(--muted)}
+.hd-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.htag{background:var(--white);border:1px solid var(--border2);border-radius:20px;padding:2px 9px;font-size:10px;color:var(--text2);font-weight:500}
+.htag.o{background:#fff3e6;border-color:#f5c888;color:var(--gold)}
+.htag.g{background:#e6f5ec;border-color:#b0e0c0;color:var(--green)}
+
+/* Period switcher */
+.period-switcher{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+.ps-btn{background:var(--white);border:1px solid var(--border2);border-radius:20px;padding:5px 13px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--text2);transition:all .15s}
+.ps-btn:hover{border-color:var(--gold);color:var(--gold)}
+.ps-btn.active{background:var(--gold);border-color:var(--gold);color:#fff}
+
+/* Stats */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:26px}
+.stat-card{background:var(--white);border:1px solid var(--border);border-radius:11px;padding:14px 13px;animation:fadeUp .4s ease both}
+.sv{font-size:22px;font-weight:900;letter-spacing:-.02em;line-height:1}
+.sl{font-size:10px;color:var(--muted);margin-top:3px}
+.sv.o{color:var(--gold)}.sv.b{color:var(--mid)}.sv.p{color:var(--top)}.sv.g{color:var(--green)}
+
+.sec{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.sec::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* Rank table */
+.rank-wrap{background:var(--white);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:26px}
+.rank-table{width:100%;border-collapse:collapse}
+.rank-table thead th{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);padding:0 11px 9px;text-align:left;border-bottom:1px solid var(--border2)}
+.rank-table thead th.r{text-align:right}
+.rank-table tbody tr{border-bottom:1px solid var(--border);animation:fadeUp .3s ease both;transition:background .1s}
+.rank-table tbody tr:hover{background:#fafaf8}
+.rank-table tbody tr:last-child{border-bottom:none}
+.rank-table td{padding:9px 11px;vertical-align:middle}
+.rn{font-size:11px;font-weight:700;color:var(--muted);width:28px;font-variant-numeric:tabular-nums}
+.rn.r1{color:var(--gold)}.rn.r2{color:var(--bot)}.rn.r3{color:#a0522d}
+.rname{font-size:12px;font-weight:500;color:var(--text)}
+.rname small{display:block;font-size:10px;color:var(--muted);font-weight:400;margin-top:1px}
+.cchip{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;padding:2px 7px;border-radius:9px}
+.qbar-wrap{display:flex;align-items:center;gap:5px}
+.qbar-bg{flex:1;height:4px;background:var(--border);border-radius:4px;overflow:hidden;min-width:60px}
+.qbar{height:100%;border-radius:4px;transition:width .6s ease}
+.qnum{font-size:12px;font-weight:700;min-width:22px;text-align:right;font-variant-numeric:tabular-nums}
+.qunit{font-size:10px;color:var(--muted)}
+.pcell{font-size:12px;color:var(--text2);text-align:right;font-variant-numeric:tabular-nums}
+.pcell strong{font-weight:700;color:var(--text)}
+
+/* Planogram */
+.plano-layout{display:grid;grid-template-columns:246px 1fr;gap:14px;align-items:start;margin-bottom:26px}
+.shelf-diag-wrap{}
+.shelf-diag-lbl{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:7px;text-align:center}
+.shelf-diag{display:flex;gap:7px;align-items:flex-end;justify-content:center}
+.figure{display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0}
+.figure svg{width:26px;height:84px}
+.figure-lbl{font-size:8.5px;color:var(--muted);font-weight:600;border-top:1px dashed #ccc;padding-top:3px;text-align:center;width:100%}
+.shelf-visual{position:relative;width:178px;border:2px solid #b8b5ae;border-bottom:none;border-radius:4px 4px 0 0;background:#fafaf8}
+.sv-side{position:absolute;top:0;bottom:0;width:5px;background:#a8a59c;border-radius:3px;z-index:2}
+.sv-side.l{left:-5px}.sv-side.r{right:-5px}
+.sv-base{height:8px;background:#a8a59c;border-radius:0 0 4px 4px;margin:0 -5px}
+.sv-zone{padding:6px 8px 0}
+.sv-zlbl{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:3px}
+.sv-zname{font-size:9px;font-weight:700}
+.sv-zcm{font-size:8px;color:var(--muted)}
+.svz-top{background:var(--top-bg)}.svz-top .sv-zname{color:var(--top)}
+.svz-gold{background:var(--gold-bg)}.svz-gold .sv-zname{color:var(--gold)}
+.svz-mid{background:var(--mid-bg)}.svz-mid .sv-zname{color:var(--mid)}
+.svz-bot{background:var(--bot-bg)}.svz-bot .sv-zname{color:var(--bot)}
+.sv-cards{display:flex;flex-wrap:wrap;gap:3px;min-height:38px;padding-bottom:6px;align-content:flex-start}
+.sv-card{background:white;border-radius:4px;padding:3px 5px;font-size:8px;border:1px solid var(--border2);min-width:46px;max-width:76px;position:relative;box-shadow:0 1px 2px rgba(0,0,0,.05);animation:fadeUp .3s ease both}
+.sv-badge{position:absolute;top:-4px;right:3px;font-size:7px;font-weight:800;padding:1px 4px;border-radius:6px}
+.sv-b1{background:#ffd770;color:#7a4e00}.sv-b2{background:#ddd;color:#555}.sv-b3{background:#e8c4a0;color:#6b3010}.sv-bn{background:#eee;color:#888}
+.sv-icon{font-size:11px;display:block;margin-bottom:1px}
+.sv-nm{font-size:7.5px;font-weight:600;color:#333;line-height:1.2;display:block}
+.sv-q{font-size:7px;color:#888;margin-top:1px}
+.sv-board{height:4px;background:linear-gradient(180deg,#c8c5bc,#a8a59c);margin:0 -8px;border-top:1px solid #b0ada4;box-shadow:0 1px 3px rgba(0,0,0,.09)}
+.sv-board.gold{background:linear-gradient(180deg,#e8c870,#c8a840);border-color:#d4b050}
+.eye-line{display:flex;align-items:center;gap:4px;margin-top:5px;font-size:9px;color:var(--gold);font-weight:700;padding-left:36px}
+.eye-line::before{content:'';flex:1;height:1px;background:var(--gold);opacity:.5;max-width:44px}
+.shelf-lists{display:flex;flex-direction:column;gap:7px}
+.sz{border-radius:10px;overflow:hidden;border:1px solid var(--border);animation:fadeUp .4s ease both}
+.sz-top{border-color:var(--top-bd)}.sz-gold{border-color:var(--gold-bd)}.sz-mid{border-color:var(--mid-bd)}.sz-bot{border-color:var(--bot-bd)}
+.zh{padding:8px 13px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
+.sz-top .zh{background:var(--top-bg);border-color:var(--top-bd)}
+.sz-gold .zh{background:var(--gold-bg);border-color:var(--gold-bd)}
+.sz-mid .zh{background:var(--mid-bg);border-color:var(--mid-bd)}
+.sz-bot .zh{background:var(--bot-bg);border-color:var(--bot-bd)}
+.zdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.sz-top .zdot{background:var(--top)}.sz-gold .zdot{background:var(--gold)}.sz-mid .zdot{background:var(--mid)}.sz-bot .zdot{background:var(--bot)}
+.zname{font-size:12px;font-weight:700}
+.sz-top .zname{color:var(--top)}.sz-gold .zname{color:var(--gold)}.sz-mid .zname{color:var(--mid)}.sz-bot .zname{color:var(--bot)}
+.zht{font-size:10px;color:var(--muted)}
+.zstrat{margin-left:auto;font-size:10px;color:var(--muted);font-style:italic}
+.zprod{background:var(--white);padding:10px 13px;display:flex;flex-wrap:wrap;gap:6px}
+.ppill{display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:6px 9px;transition:box-shadow .15s,transform .15s;animation:fadeUp .3s ease both}
+.ppill:hover{box-shadow:0 2px 7px rgba(0,0,0,.07);transform:translateY(-1px)}
+.pp-rk{width:18px;height:18px;border-radius:50%;font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ppg{background:#ffecc8;color:#c05a00}.pps{background:#ececec;color:#666}.ppb{background:#f5e4d4;color:#a0522d}.ppn{background:var(--border);color:var(--muted)}
+.pp-nm{font-size:11px;font-weight:500}
+.pp-meta{font-size:10px;color:var(--muted);margin-top:1px}
+
+/* Compare */
+.compare-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:26px}
+.compare-card{background:var(--white);border:1px solid var(--border);border-radius:11px;overflow:hidden}
+.cc-head{padding:9px 13px;border-bottom:1px solid var(--border);font-size:11px;font-weight:700;color:var(--gold);background:var(--gold-bg)}
+.cc-rows{padding:4px 0}
+.cc-row{display:flex;align-items:center;gap:7px;padding:5px 12px}
+.cc-rn{font-size:10px;font-weight:700;color:var(--muted);width:18px}
+.cc-rn.r1{color:var(--gold)}.cc-rn.r2{color:var(--bot)}.cc-rn.r3{color:#a0522d}
+.cc-nm{flex:1;font-size:11px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.cc-q{font-size:11px;font-weight:700;color:var(--mid)}
+.tb{font-size:9px;font-weight:700;padding:1px 5px;border-radius:6px}
+.tb-up{background:#e6f5ec;color:var(--green)}.tb-dn{background:#fde8e8;color:var(--red)}.tb-eq{background:var(--bg);color:var(--muted)}
+
+/* Brand */
+.brand-wrap{background:var(--white);border:1px solid var(--border);border-radius:11px;padding:15px;margin-bottom:26px}
+.brand-bars{display:flex;flex-direction:column;gap:9px}
+.brand-row{display:flex;align-items:center;gap:9px}
+.brand-lbl{font-size:12px;font-weight:600;width:64px;flex-shrink:0}
+.bbg{flex:1;height:8px;background:var(--border);border-radius:5px;overflow:hidden}
+.bb{height:100%;border-radius:5px;transition:width .8s ease}
+.bb-0{background:linear-gradient(90deg,#e67e00,#f5a030)}
+.bb-1{background:linear-gradient(90deg,#0066cc,#3399ff)}
+.bb-2{background:linear-gradient(90deg,#1a7f4b,#40c07a)}
+.bb-3{background:linear-gradient(90deg,#6c5ce7,#a29bfe)}
+.bb-4{background:linear-gradient(90deg,#888,#bbb)}
+.bb-5{background:linear-gradient(90deg,#d63031,#ff7675)}
+.bqty{font-size:12px;font-weight:700;width:40px;text-align:right}
+
+/* Insights */
+.insights-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:26px}
+.ins{background:var(--white);border:1px solid var(--border);border-radius:11px;padding:16px 14px;animation:fadeUp .4s ease both}
+.ins-num{font-size:26px;font-weight:900;letter-spacing:-.04em;line-height:1;margin-bottom:7px}
+.in-o{color:var(--gold)}.in-b{color:var(--mid)}.in-p{color:var(--top)}
+.ins-t{font-size:12px;font-weight:700;margin-bottom:4px}
+.ins-b{font-size:11px;color:var(--text2);line-height:1.65}
+
+/* Raw preview */
+.raw-preview{background:var(--white);border:1px solid var(--border);border-radius:10px;margin-bottom:20px;overflow:hidden}
+.rp-head{padding:10px 14px;border-bottom:1px solid var(--border);font-size:11px;font-weight:700;color:var(--text2);display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
+.rp-body{max-height:200px;overflow-y:auto;display:none}
+.rp-body.open{display:block}
+.rp-table{width:100%;border-collapse:collapse;font-size:11px}
+.rp-table th{background:var(--bg);padding:6px 10px;text-align:left;font-weight:600;color:var(--muted);border-bottom:1px solid var(--border);font-size:10px}
+.rp-table td{padding:5px 10px;border-bottom:1px solid var(--border);color:var(--text2)}
+.rp-table tr:last-child td{border-bottom:none}
+
+.footer{border-top:1px solid var(--border);padding-top:14px;font-size:10px;color:var(--muted);display:flex;justify-content:space-between;flex-wrap:wrap;gap:5px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(60px);background:#1a1a1a;color:#fff;font-size:12px;font-weight:600;padding:9px 18px;border-radius:22px;z-index:9999;transition:transform .3s,opacity .3s;opacity:0;pointer-events:none;max-width:90vw;text-align:center}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:860px){.app{flex-direction:column}.sidebar{width:100%;height:auto;position:static}.plano-layout{grid-template-columns:1fr}.shelf-diag-wrap{display:none}.stats-row{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.insights-grid{grid-template-columns:1fr}.qbar-wrap{display:none}}
+@media print{.sidebar,.toast{display:none!important}*{animation:none!important}}
+
+/* ── Tab nav ── */
+.tab-nav{display:flex;border-bottom:2px solid var(--border2);margin-bottom:24px;gap:0}
+.tab-btn{display:flex;align-items:center;gap:6px;padding:11px 18px;font-size:12px;font-weight:600;color:var(--muted);background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap}
+.tab-btn:hover{color:var(--text2)}
+.tab-btn.active{color:var(--gold);border-bottom-color:var(--gold)}
+.tab-panel{display:none}.tab-panel.active{display:block}
+.tab-badge{background:var(--gold);color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:8px;min-width:16px;text-align:center}
+
+/* ── Upsell cards ── */
+.upsell-note{font-size:11px;color:#7a4e00;background:var(--gold-bg);border:1px solid var(--gold-bd);border-radius:10px;padding:10px 14px;margin-bottom:18px;line-height:1.7}
+.upsell-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-bottom:26px}
+.upsell-card{background:var(--white);border:1px solid var(--border);border-radius:12px;overflow:hidden;animation:fadeUp .4s ease both;transition:box-shadow .15s}
+.upsell-card:hover{box-shadow:0 4px 14px rgba(0,0,0,.08)}
+.uc-head{padding:11px 14px;display:flex;align-items:center;gap:9px;border-bottom:1px solid var(--border)}
+.uc-rank{width:24px;height:24px;border-radius:50%;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.uc-rank-h{background:#ffecc8;color:#c05a00;border:1.5px solid #f5c878}
+.uc-rank-m{background:#e8f4ff;color:#005fcc;border:1.5px solid #aaccf0}
+.uc-title{flex:1;font-size:12px;font-weight:700;line-height:1.3;color:var(--text)}
+.uc-price{font-size:11px;font-weight:700;color:var(--gold);white-space:nowrap}
+.uc-body{padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.uc-tags{display:flex;gap:5px;flex-wrap:wrap}
+.uc-tag{font-size:10px;font-weight:600;padding:2px 8px;border-radius:8px}
+.ut-cat{background:var(--gold-bg);color:#c05a00;border:1px solid var(--gold-bd)}
+.ut-info{background:var(--bg);color:var(--text2);border:1px solid var(--border)}
+.ut-combo{background:#f0fff4;color:var(--green);border:1px solid #a0ddb8}
+.ut-check{background:#e8f4ff;color:#005fcc;border:1px solid #aaccf0}
+.uc-lbl{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.uc-script{font-size:12px;color:var(--text2);line-height:1.7;padding:9px 12px;background:var(--bg);border-radius:8px;border-left:3px solid var(--gold)}
+.uc-script small{color:var(--muted)}
+.uc-points{display:flex;flex-direction:column;gap:6px}
+.uc-point{display:flex;gap:8px;font-size:11px;color:var(--text2);line-height:1.6}
+.uc-point-icon{flex-shrink:0}
+.uc-combo{font-size:12px;color:var(--text2);line-height:1.7;padding:9px 12px;background:#f0fff4;border-radius:8px;border-left:3px solid var(--green)}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ══ SIDEBAR ══ -->
+<div class="sidebar">
+  <div class="sb-header">
+    <h2>🍎 右昌店 配件陳列分析</h2>
+    <p>上傳 POS Excel → 自動分析 → 更新示意圖</p>
+  </div>
+
+  <!-- Period list -->
+  <div class="period-list" id="period-list"></div>
+
+  <!-- Upload -->
+  <div class="upload-area">
+    <span class="upload-label">上傳 POS Excel 檔案</span>
+    <div class="drop-zone" id="drop-zone">
+      <input type="file" id="file-input" accept=".xlsx,.xls,.csv" onchange="handleFile(this.files[0])">
+      <span class="dz-icon">📂</span>
+      <div class="dz-text">點擊選擇或拖曳檔案</div>
+      <div class="dz-sub">.xlsx / .xls / .csv</div>
+    </div>
+    <input type="text" class="period-input" id="period-name-input" placeholder="期間名稱（例：2026 年 4 月）">
+    <div class="parse-status" id="parse-status"></div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filter-area">
+    <span class="upload-label">篩選設定</span>
+    <div class="filter-row">
+      <label>類別代碼 從</label>
+      <input type="number" id="cat-lo" value="3100000">
+    </div>
+    <div class="filter-row">
+      <label>類別代碼 至</label>
+      <input type="number" id="cat-hi" value="3199999">
+    </div>
+    <div class="filter-row">
+      <label>顯示前 N 名</label>
+      <input type="number" id="top-n" value="15" min="5" max="30">
+    </div>
+    <div class="filter-note">自動排除：保護貼、保護殼、LoopLoop 組合包等</div>
+  </div>
+
+  <div class="sb-actions">
+    <button class="btn-apply" onclick="runAnalysis()">📊 分析並更新陳列</button>
+    <button class="btn-clear" onclick="clearAll()">🗑 清除所有資料</button>
+    <div class="sb-hint">💾 資料存於瀏覽器，重新整理仍保留</div>
+  </div>
+</div>
+
+<!-- ══ MAIN ══ -->
+<div class="main" id="main-panel">
+  <div class="empty-state">
+    <div class="empty-icon">📊</div>
+    <h3>上傳 POS Excel 開始分析</h3>
+    <p>系統會自動識別欄位、過濾配件類別、排名並產生貨架示意圖</p>
+    <div class="empty-steps">
+      <div class="step"><div class="step-num">1</div><span>左側上傳 POS Excel 檔（.xlsx 或 .xls）</span></div>
+      <div class="step"><div class="step-num">2</div><span>輸入期間名稱（例：2026 年 4 月）</span></div>
+      <div class="step"><div class="step-num">3</div><span>確認類別代碼範圍後，點「分析並更新陳列」</span></div>
+      <div class="step"><div class="step-num">4</div><span>自動產生排行榜 + 貨架示意圖 + 品牌分析</span></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════
+// CONSTANTS
+// ════════════════════════════════════
+const CATS = {
+  charger:{label:'充電器',  icon:'🔌',color:'#c05a00',bg:'#fff0e6'},
+  cable:  {label:'充電線',  icon:'🔗',color:'#005fcc',bg:'#e8f4ff'},
+  power:  {label:'行動電源',icon:'🔋',color:'#5040c0',bg:'#f0f0ff'},
+  stylus: {label:'iPad 筆', icon:'✏️',color:'#1a7f4b',bg:'#f0fff4'},
+  other:  {label:'其他',    icon:'📦',color:'#666',   bg:'#f4f4f2'},
+};
+const ZONE_META = {
+  top:  {name:'頂層',          cm:'> 170 cm',  strat:'高單價 · 計畫性購買', cls:'sz-top'},
+  gold: {name:'⭐ 黃金視線區', cm:'130–170 cm', strat:'最高銷量 · 衝動購買', cls:'sz-gold'},
+  mid:  {name:'中層',          cm:'90–130 cm', strat:'高週轉線材區',         cls:'sz-mid'},
+  bot:  {name:'底層',          cm:'< 90 cm',   strat:'補充品 · 低頻購買',    cls:'sz-bot'},
+};
+
+// Exclusion keywords
+const EXCLUDE = [
+  '保護貼','保貼','鋼化貼','螢幕貼','鏡頭貼','玻璃貼','保護膜','鋁合金貼',
+  '代貼服務','Titanguard','Vetro','ZIFRIEND','imos',
+  '保護殼','手機殼','保護套','軟殼','硬殼','LoopLoop',
+  'OÅ@¶K','OÅ@´ß' // BIG5 残码: 保護殼/保護貼
+];
+
+// ════════════════════════════════════
+// STATE
+// ════════════════════════════════════
+let db = JSON.parse(localStorage.getItem('plano_db2')||'null') || {periods:[]};
+let activePeriodId = db.periods[0]?.id || null;
+let viewPeriodId   = activePeriodId;
+let pendingRows    = null;  // parsed but not yet saved
+let activeTab      = 'analysis';
+
+function save(){ localStorage.setItem('plano_db2', JSON.stringify(db)); }
+function getViewPeriod(){ return db.periods.find(p=>p.id===viewPeriodId); }
+
+// ════════════════════════════════════
+// FILE PARSING
+// ════════════════════════════════════
+function handleFile(file){
+  if(!file) return;
+  setStatus('loading','⏳ 讀取中…');
+  const reader = new FileReader();
+  reader.onerror = () => setStatus('err','❌ 讀取檔案失敗，請確認檔案未損毀');
+  reader.onload = (e) => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      let rows;
+      // 嘗試 BIG5(950) → 自動偵測，取第一個能解出中文的結果
+      for(const opts of [{type:'array',codepage:950},{type:'array'}]){
+        try{
+          const wb = XLSX.read(data, opts);
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const r  = XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
+          if(r.length<=1) continue;
+          const sample = r.slice(0,10).flatMap(x=>x).map(c=>String(c)).join('');
+          if(/[一-鿿]/.test(sample)){ rows=r; break; }
+          if(!rows) rows=r;
+        }catch(e2){ continue; }
+      }
+      if(!rows?.length){ setStatus('err','❌ 無法讀取檔案，請確認為 .xlsx / .xls 格式'); return; }
+
+      // 掃前 6 列找 header
+      let headerIdx=0;
+      for(let i=0;i<Math.min(6,rows.length);i++){
+        const r=rows[i].map(c=>String(c).toLowerCase());
+        if(r.some(c=>c.includes('item_no')||c.includes('item_nam')||c.includes('品號')||c.includes('品名')||c.includes('sale_qty'))){
+          headerIdx=i; break;
+        }
+      }
+      const rawH   = rows[headerIdx].map(c=>String(c).trim());
+      const headers = rawH.map(c=>c.toLowerCase());
+      const dataRows = rows.slice(headerIdx+1).filter(r=>r.some(c=>String(c).trim()!==''));
+
+      const colMap = detectColumns(headers);
+      if(colMap.name<0){
+        setStatus('err',`❌ 找不到品名欄位。偵測到：${rawH.filter(h=>h).slice(0,8).join('、')||'（空）'}`);
+        return;
+      }
+
+      pendingRows = dataRows.map(r=>({
+        no:   String(r[colMap.no]||'').trim(),
+        name: fixBig5Cell(String(r[colMap.name]||'').trim()),
+        type: parseInt(String(r[colMap.type]||'').replace(/,/g,''))||0,
+        qty:  parseFloat(String(r[colMap.qty]||'').replace(/,/g,''))||0,
+        amt:  parseFloat(String(r[colMap.amt]||'').replace(/,/g,''))||0,
+      })).filter(r=>r.name&&r.qty>0);
+
+      if(!document.getElementById('period-name-input').value){
+        const guess = guessPeriodFromFilename(file.name);
+        if(guess) document.getElementById('period-name-input').value = guess;
+      }
+      const skuCount = [...new Set(pendingRows.map(r=>r.name))].length;
+      const sample   = pendingRows[0]?.name||'';
+      if(/[¡-ÿ]{3,}/.test(sample)){
+        setStatus('err',`⚠️ 品名仍有亂碼（例：${sample.slice(0,20)}），建議另存為 .xlsx 再上傳`);
+      } else {
+        setStatus('ok',`✅ 讀取成功：${pendingRows.length.toLocaleString()} 筆，${skuCount} SKU　例：${sample.slice(0,20)}`);
+      }
+    } catch(err){
+      setStatus('err','❌ 解析失敗：'+err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function detectColumns(headers){
+  const find=(...kw)=>{
+    for(const k of kw){
+      let i=headers.indexOf(k); if(i>=0) return i;
+      i=headers.findIndex(h=>h.includes(k)); if(i>=0) return i;
+    }
+    return -1;
+  };
+  return{
+    no:   find('item_item_no','item_no','品號','商品編號'),
+    name: find('it01_item_nam','item_nam','品名','商品名稱','name'),
+    type: find('it01_item_type','item_type','類別代碼','類別','category','type'),
+    qty:  find('item_sale_qty','sale_qty','銷售數量','數量','qty'),
+    amt:  find('item_sal_amt','sal_amt','銷售金額','金額','amount','amt'),
+  };
+}
+
+// BIG5 殘碼修正：ShiftJIS/Latin-1 誤讀後用 TextDecoder 補救
+function fixBig5Cell(val){
+  if(!val) return val;
+  if(/[一-鿿㄀-ㄯ]/.test(val)) return val; // 已是中文
+  try{
+    const bytes = new Uint8Array(val.length);
+    for(let i=0;i<val.length;i++) bytes[i]=val.charCodeAt(i)&0xff;
+    const result = new TextDecoder('big5',{fatal:false}).decode(bytes);
+    if(/[一-鿿]/.test(result)) return result;
+  }catch(e){}
+  return val;
+}
+
+function guessPeriodFromFilename(name){
+  const m = name.match(/(\d{4})[._\-]?(\d{1,2})/);
+  if(m) return `${m[1]} 年 ${parseInt(m[2])} 月`;
+  const q = name.match(/(\d{4})[._]?[Qq]([1-4])/);
+  if(q) return `${q[1]} Q${q[2]}`;
+  return '';
+}
+
+function setStatus(type, msg){
+  const el = document.getElementById('parse-status');
+  el.className='parse-status '+type;
+  el.textContent=msg;
+}
+
+// ════════════════════════════════════
+// ANALYSIS
+// ════════════════════════════════════
+function runAnalysis(){
+  if(!pendingRows){ showToast('⚠️ 請先上傳 Excel 檔案'); return; }
+
+  const catLo  = parseInt(document.getElementById('cat-lo').value)||3100000;
+  const catHi  = parseInt(document.getElementById('cat-hi').value)||3199999;
+  const topN   = parseInt(document.getElementById('top-n').value)||15;
+  const label  = document.getElementById('period-name-input').value.trim() || ('期間 '+(db.periods.length+1));
+
+  // Filter by category code (if type column exists)
+  let filtered = pendingRows;
+  const hasType = filtered.some(r=>r.type>0);
+  if(hasType){
+    filtered = filtered.filter(r => r.type>=catLo && r.type<=catHi);
+  }
+
+  // Exclude keywords
+  filtered = filtered.filter(r => !EXCLUDE.some(k=>r.name.includes(k)));
+
+  if(!filtered.length){
+    showToast('⚠️ 過濾後無資料，請調整類別代碼範圍');
+    return;
+  }
+
+  // Aggregate by name
+  const map = {};
+  filtered.forEach(r=>{
+    if(!map[r.name]) map[r.name]={name:r.name,qty:0,amt:0,no:r.no};
+    map[r.name].qty+=r.qty;
+    map[r.name].amt+=r.amt;
+  });
+
+  const sorted = Object.values(map).sort((a,b)=>b.qty-a.qty).slice(0,topN);
+  const items  = sorted.map((d,i)=>({
+    rank:i+1,
+    name:d.name,
+    cat:guessCategory(d.name),
+    qty:Math.round(d.qty),
+    price:d.qty>0?Math.round(d.amt/d.qty):0,
+    amt:Math.round(d.amt),
+  }));
+
+  // Assign zones
+  const ranked = assignZones(items);
+
+  // Save period
+  const id = 'p_'+Date.now();
+  db.periods.push({id, label, items:ranked, catLo, catHi, rawCount:pendingRows.length, filteredCount:filtered.length});
+  activePeriodId = id;
+  viewPeriodId   = id;
+  save();
+
+  renderSidebar();
+  renderMain();
+  showToast(`✅「${label}」分析完成，${ranked.length} 個 SKU`);
+  pendingRows = null;
+  document.getElementById('period-name-input').value='';
+  setStatus('','');
+  document.getElementById('file-input').value='';
+}
+
+function guessCategory(name){
+  const n=(name||'').toLowerCase();
+  if(/充電器|gan|快充|charger|電源供應|power adapter/.test(n)) return 'charger';
+  if(/充電線|傳輸線|lightning|type-?c|usb|cable/.test(n)) return 'cable';
+  if(/行動電源|mah|power.?bank/.test(n)) return 'power';
+  if(/觸控筆|pencil|stylus/.test(n)) return 'stylus';
+  return 'other';
+}
+
+function assignZones(sorted){
+  const total=sorted.length;
+  return sorted.map((item,idx)=>{
+    const rank=idx+1;
+    let zone;
+    if(item.cat==='power'||item.cat==='stylus') zone='top';
+    else if(item.cat==='charger'&&rank<=Math.ceil(total*.4)) zone='gold';
+    else if(item.cat==='charger') zone=rank<=Math.ceil(total*.75)?'gold':'bot';
+    else if(item.cat==='cable')   zone=rank<=Math.ceil(total*.65)?'mid':'bot';
+    else zone='bot';
+    if(rank>Math.ceil(total*.87)) zone='bot';
+    return {...item,rank,zone};
+  });
+}
+
+// ════════════════════════════════════
+// SIDEBAR
+// ════════════════════════════════════
+function renderSidebar(){
+  const list=document.getElementById('period-list');
+  list.innerHTML='';
+  if(!db.periods.length){
+    list.innerHTML='<div style="font-size:11px;color:var(--muted);padding:8px 0;text-align:center">尚無期間資料</div>';
+    return;
+  }
+  db.periods.forEach(p=>{
+    const div=document.createElement('div');
+    div.className='period-item'+(p.id===viewPeriodId?' active':'');
+    div.innerHTML=`<div class="pi-dot"></div>
+      <div class="pi-label">${esc(p.label)}</div>
+      <div class="pi-meta">${p.items?.length||0} SKU</div>
+      <button class="pi-del" onclick="deletePeriod('${p.id}',event)" title="刪除">×</button>`;
+    div.addEventListener('click',()=>switchView(p.id));
+    list.appendChild(div);
+  });
+}
+
+function deletePeriod(id,e){
+  e.stopPropagation();
+  const p=db.periods.find(x=>x.id===id);
+  if(!confirm(`確定刪除「${p?.label}」？`)) return;
+  db.periods=db.periods.filter(x=>x.id!==id);
+  if(viewPeriodId===id) viewPeriodId=db.periods[0]?.id||null;
+  save(); renderSidebar(); renderMain();
+}
+
+function switchView(id){
+  viewPeriodId=id;
+  renderSidebar();
+  renderMain();
+}
+
+function clearAll(){
+  if(!confirm('確定清除所有資料？')) return;
+  db={periods:[]};
+  viewPeriodId=null;
+  localStorage.removeItem('plano_db2');
+  renderSidebar(); renderMain();
+  showToast('🗑 已清除');
+}
+
+// ════════════════════════════════════
+// MAIN RENDER
+// ════════════════════════════════════
+function switchTab(tab){
+  activeTab=tab;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='tab-'+tab));
+}
+
+function renderMain(){
+  const main=document.getElementById('main-panel');
+  if(!db.periods.length){
+    main.innerHTML=`<div class="empty-state">
+      <div class="empty-icon">📊</div>
+      <h3>上傳 POS Excel 開始分析</h3>
+      <p>支援 POS 匯出的 .xlsx / .xls 格式，系統自動識別欄位</p>
+      <div class="empty-steps">
+        <div class="step"><div class="step-num">1</div><span>左側上傳 POS Excel 檔</span></div>
+        <div class="step"><div class="step-num">2</div><span>輸入期間名稱後點「分析並更新陳列」</span></div>
+        <div class="step"><div class="step-num">3</div><span>自動產生貨架示意圖與分析報告</span></div>
+      </div></div>`;
+    return;
+  }
+  const period=getViewPeriod()||db.periods[0];
+  if(!period){main.innerHTML='';return;}
+  const ranked=period.items||[];
+  const totalQty=ranked.reduce((s,i)=>s+i.qty,0);
+  const chargerQty=ranked.filter(i=>i.cat==='charger').reduce((s,i)=>s+i.qty,0);
+  const topItem=ranked[0];
+  const upsellItems=ranked.filter(item=>needsUpsell(item,ranked));
+
+  const switcherHtml=db.periods.length>1
+    ?`<div class="period-switcher">${db.periods.map(p=>`<button class="ps-btn${p.id===period.id?' active':''}" onclick="switchView('${p.id}')">${esc(p.label)}</button>`).join('')}</div>`:'';
+
+  const curIdx=db.periods.findIndex(p=>p.id===period.id);
+  const prevPeriod=curIdx>0?db.periods[curIdx-1]:null;
+  const compareHtml=prevPeriod?`<div class="sec">與上期比較</div>${buildCompare(ranked,prevPeriod)}`:'';
+
+  main.innerHTML=`
+    <div class="page-hd">
+      <h1>右昌店 <span>配件陳列建議</span></h1>
+      <p>Apple Accessories Planogram · ${esc(period.label)}</p>
+      <div class="hd-tags">
+        <span class="htag o">排除保護貼 ／ 保護殼</span>
+        <span class="htag g">分析 ${(period.filteredCount||0).toLocaleString()} 筆 → ${ranked.length} SKU</span>
+        <span class="htag">原始資料 ${(period.rawCount||0).toLocaleString()} 筆</span>
+      </div>
+    </div>
+    ${switcherHtml}
+
+    <!-- Tab nav -->
+    <div class="tab-nav">
+      <button class="tab-btn${activeTab==='analysis'?' active':''}" data-tab="analysis" onclick="switchTab('analysis')">📊 銷售分析</button>
+      <button class="tab-btn${activeTab==='planogram'?' active':''}" data-tab="planogram" onclick="switchTab('planogram')">🗂 貨架陳列</button>
+      <button class="tab-btn${activeTab==='upsell'?' active':''}" data-tab="upsell" onclick="switchTab('upsell')">🎯 導購話術 <span class="tab-badge">${upsellItems.length}</span></button>
+    </div>
+
+    <!-- Tab 1：銷售分析 -->
+    <div class="tab-panel${activeTab==='analysis'?' active':''}" id="tab-analysis">
+      <div class="stats-row">
+        <div class="stat-card" style="animation-delay:.04s"><div class="sv o">${ranked.length}</div><div class="sl">有效 SKU</div></div>
+        <div class="stat-card" style="animation-delay:.08s"><div class="sv b">${totalQty.toLocaleString()}</div><div class="sl">總銷售件數</div></div>
+        <div class="stat-card" style="animation-delay:.12s"><div class="sv p">$${(topItem?.price||0).toLocaleString()}</div><div class="sl">最高均價</div></div>
+        <div class="stat-card" style="animation-delay:.16s"><div class="sv g">${chargerQty}件</div><div class="sl">充電器合計</div></div>
+      </div>
+      ${compareHtml}
+      <div class="sec">銷售排行 Top ${ranked.length}</div>
+      <div class="rank-wrap">${buildRankTable(ranked)}</div>
+      <div class="sec">品牌銷量分佈</div>
+      <div class="brand-wrap">${buildBrands(ranked)}</div>
+      <div class="sec">關鍵洞察</div>
+      <div class="insights-grid">${buildInsights(ranked)}</div>
+    </div>
+
+    <!-- Tab 2：貨架陳列 -->
+    <div class="tab-panel${activeTab==='planogram'?' active':''}" id="tab-planogram">
+      <div class="plano-layout">
+        ${buildShelfDiagram(ranked)}
+        <div class="shelf-lists">${buildZoneLists(ranked)}</div>
+      </div>
+    </div>
+
+    <!-- Tab 3：導購話術 -->
+    <div class="tab-panel${activeTab==='upsell'?' active':''}" id="tab-upsell">
+      ${buildUpsellGuide(ranked)}
+    </div>
+
+    <div class="footer">
+      <span>右昌店 · ${esc(period.label)} · 類別碼 ${period.catLo||''}–${period.catHi||''}</span>
+      <span>由 POS 銷售記錄自動分析</span>
+    </div>`;
+}
+
+// ════════════════════════════════════
+// BUILD COMPONENTS
+// ════════════════════════════════════
+function buildRankTable(ranked){
+  const max=ranked[0]?.qty||1;
+  return `<table class="rank-table">
+    <thead><tr>
+      <th style="width:36px">#</th><th>品項</th>
+      <th style="width:70px">類型</th>
+      <th>銷售量</th>
+      <th class="r" style="width:80px">均價</th>
+    </tr></thead>
+    <tbody>${ranked.map((item,i)=>{
+      const c=CATS[item.cat]||CATS.other;
+      const bw=Math.round(item.qty/max*100);
+      const rc=item.rank===1?'r1':item.rank===2?'r2':item.rank===3?'r3':'';
+      return `<tr style="animation-delay:${i*.025}s">
+        <td><span class="rn ${rc}">#${item.rank}</span></td>
+        <td><div class="rname">${esc(item.name)}</div></td>
+        <td><span class="cchip" style="background:${c.bg};color:${c.color}">${c.icon} ${c.label}</span></td>
+        <td><div class="qbar-wrap">
+          <div class="qbar-bg"><div class="qbar" style="width:${bw}%;background:${c.color}"></div></div>
+          <span class="qnum">${item.qty.toLocaleString()}</span><span class="qunit">件</span>
+        </div></td>
+        <td class="pcell"><strong>${item.price?'$'+item.price.toLocaleString():'—'}</strong></td>
+      </tr>`;}).join('')}</tbody></table>`;
+}
+
+function buildShelfDiagram(ranked){
+  const zones={top:[],gold:[],mid:[],bot:[]};
+  ranked.forEach(i=>zones[i.zone].push(i));
+  function cards(z){
+    return zones[z].map((item,idx)=>{
+      const bc=item.rank===1?'sv-b1':item.rank===2?'sv-b2':item.rank===3?'sv-b3':'sv-bn';
+      const icon=CATS[item.cat]?.icon||'📦';
+      const short=item.name.replace(/充電器|行動電源/g,'').replace('充電線','線').replace('磁吸觸控筆','筆').trim().slice(0,10);
+      return `<div class="sv-card" style="animation-delay:${.2+idx*.05}s">
+        <span class="sv-badge ${bc}">#${item.rank}</span>
+        <span class="sv-icon">${icon}</span>
+        <span class="sv-nm">${esc(short)}</span>
+        <div class="sv-q">${item.qty}件</div></div>`;
+    }).join('')||'<span style="font-size:7.5px;color:#bbb;padding:3px">暫無</span>';
+  }
+  return `<div class="shelf-diag-wrap">
+    <div class="shelf-diag-lbl">貨架示意圖</div>
+    <div class="shelf-diag">
+      <div class="figure">
+        <svg viewBox="0 0 40 120" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="20" cy="10" r="8" fill="#c8c8c0"/>
+          <rect x="12" y="20" width="16" height="36" rx="4" fill="#c8c8c0"/>
+          <rect x="4"  y="22" width="8"  height="28" rx="4" fill="#c8c8c0"/>
+          <rect x="28" y="22" width="8"  height="28" rx="4" fill="#c8c8c0"/>
+          <rect x="13" y="54" width="7"  height="34" rx="4" fill="#c8c8c0"/>
+          <rect x="20" y="54" width="7"  height="34" rx="4" fill="#c8c8c0"/>
+        </svg>
+        <div class="figure-lbl">170cm</div>
+      </div>
+      <div class="shelf-visual">
+        <div class="sv-zone svz-top"><div class="sv-zlbl"><span class="sv-zname">頂層</span><span class="sv-zcm">&gt;170</span></div><div class="sv-cards">${cards('top')}</div><div class="sv-board"></div></div>
+        <div class="sv-zone svz-gold"><div class="sv-zlbl"><span class="sv-zname">⭐ 黃金</span><span class="sv-zcm">130-170</span></div><div class="sv-cards">${cards('gold')}</div><div class="sv-board gold"></div></div>
+        <div class="sv-zone svz-mid"><div class="sv-zlbl"><span class="sv-zname">中層</span><span class="sv-zcm">90-130</span></div><div class="sv-cards">${cards('mid')}</div><div class="sv-board"></div></div>
+        <div class="sv-zone svz-bot"><div class="sv-zlbl"><span class="sv-zname">底層</span><span class="sv-zcm">&lt;90</span></div><div class="sv-cards">${cards('bot')}</div><div class="sv-board"></div></div>
+        <div class="sv-side l"></div><div class="sv-side r"></div>
+        <div class="sv-base"></div>
+      </div>
+    </div>
+    <div class="eye-line">👁 黃金視線</div>
+  </div>`;
+}
+
+function buildZoneLists(ranked){
+  const zones={top:[],gold:[],mid:[],bot:[]};
+  ranked.forEach(i=>zones[i.zone].push(i));
+  return ['top','gold','mid','bot'].map((z,zi)=>{
+    const meta=ZONE_META[z];
+    const items=zones[z];
+    const pills=items.length
+      ?items.map((item,idx)=>{
+          const pc=item.rank===1?'ppg':item.rank===2?'pps':item.rank===3?'ppb':'ppn';
+          return `<div class="ppill" style="animation-delay:${idx*.04}s">
+            <div class="pp-rk ${pc}">${item.rank}</div>
+            <div><div class="pp-nm">${esc(item.name)}</div>
+            <div class="pp-meta">${item.qty.toLocaleString()} 件${item.price?' · $'+item.price.toLocaleString():''}</div></div>
+          </div>`;}).join('')
+      :'<span style="font-size:11px;color:#bbb;padding:6px 0;display:block;width:100%;text-align:center">此區暫無品項</span>';
+    return `<div class="sz ${meta.cls}" style="animation-delay:${zi*.06}s">
+      <div class="zh"><div class="zdot"></div><div class="zname">${meta.name}</div>
+      <div class="zht">${meta.cm}</div><div class="zstrat">${meta.strat}</div></div>
+      <div class="zprod">${pills}</div></div>`;
+  }).join('');
+}
+
+function buildBrands(ranked){
+  const map={};
+  ranked.forEach(i=>{const b=getBrand(i.name);map[b]=(map[b]||0)+i.qty;});
+  const sorted=Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const max=sorted[0]?.[1]||1;
+  return `<div class="brand-bars">${sorted.map(([b,q],i)=>`
+    <div class="brand-row">
+      <div class="brand-lbl">${esc(b)}</div>
+      <div class="bbg"><div class="bb bb-${i}" style="width:${Math.round(q/max*100)}%"></div></div>
+      <div class="bqty">${q.toLocaleString()}</div>
+    </div>`).join('')}</div>`;
+}
+
+function buildInsights(ranked){
+  const chargerQty=ranked.filter(i=>i.cat==='charger').reduce((s,i)=>s+i.qty,0);
+  const cableQty=ranked.filter(i=>i.cat==='cable').reduce((s,i)=>s+i.qty,0);
+  const topItem=ranked[0];
+  const topBrand=getBrand(topItem?.name||'');
+  const topBrandQ=ranked.filter(i=>getBrand(i.name)===topBrand).reduce((s,i)=>s+i.qty,0);
+  return [
+    {num:`${topBrandQ}件`,cls:'in-o',t:`${topBrand} 是銷售主力`,
+     b:`${topBrand} 合計 ${topBrandQ} 件，黃金區集中展示，並排同品牌提升識別度。`},
+    {num:`${cableQty}件`,cls:'in-b',t:'線材需求持續穩定',
+     b:`充電線合計 ${cableQty} 件，中層依接頭分組（Lightning / USB-C），讓顧客快速辨識。`},
+    {num:`$${(topItem?.price||0).toLocaleString()}`,cls:'in-p',t:`${(topItem?.name||'').slice(0,8)} 需導購`,
+     b:'最高均價商品屬計畫性購買，頂層搭配說明牌，店員接話轉換率更高。'},
+  ].map((d,i)=>`<div class="ins" style="animation-delay:${(i+1)*.1}s">
+    <div class="ins-num ${d.cls}">${d.num}</div>
+    <div class="ins-t">${d.t}</div>
+    <div class="ins-b">${d.b}</div>
+  </div>`).join('');
+}
+
+function buildCompare(currentRanked,prevPeriod){
+  const prev=prevPeriod.items||[];
+  const prevMap={};
+  prev.forEach(i=>{prevMap[i.name]=i.qty;});
+  const cols=[
+    {label:prevPeriod.label,items:prev.slice(0,8)},
+    {label:'本期（'+getViewPeriod()?.label+'）',items:currentRanked.slice(0,8),prevMap},
+  ];
+  return `<div class="compare-grid">${cols.map(col=>`
+    <div class="compare-card">
+      <div class="cc-head">${esc(col.label)}</div>
+      <div class="cc-rows">${col.items.map((item,i)=>{
+        const rc=i===0?'r1':i===1?'r2':i===2?'r3':'';
+        let tb='';
+        if(col.prevMap){
+          const p=col.prevMap[item.name];
+          if(p!==undefined){const d=item.qty-p;tb=d>0?`<span class="tb tb-up">▲${d}</span>`:d<0?`<span class="tb tb-dn">▼${Math.abs(d)}</span>`:`<span class="tb tb-eq">—</span>`;}
+          else tb=`<span class="tb tb-up">NEW</span>`;
+        }
+        return `<div class="cc-row">
+          <div class="cc-rn ${rc}">#${i+1}</div>
+          <div class="cc-nm" title="${esc(item.name)}">${esc(item.name.slice(0,16))}</div>
+          <div class="cc-q">${item.qty}</div>${tb}</div>`;
+      }).join('')}</div></div>`).join('')}</div>`;
+}
+
+// ════════════════════════════════════
+// UPSELL GUIDE
+// ════════════════════════════════════
+function needsUpsell(item, ranked){
+  if(item.cat==='power'||item.cat==='stylus') return true;
+  if(item.price>=600) return true;
+  if(item.cat==='charger'&&item.rank<=5) return true;
+  if(item.cat==='cable'&&item.rank<=3) return true;
+  return false;
+}
+
+function buildUpsellGuide(ranked){
+  const items=ranked.filter(item=>needsUpsell(item,ranked)).slice(0,9);
+  if(!items.length) return '<div style="font-size:12px;color:var(--muted);padding:20px 0">目前排行中無需特別導購的品項</div>';
+  const note=`<div class="upsell-note">
+    📌 <strong>使用說明</strong>　以下為對話引導框架，不含產品規格。<br>
+    先用開場問句了解顧客需求，確認後再依你對產品的<strong>實際認識</strong>說明功能。切勿自行假設或捏造規格。
+  </div>`;
+  return note+`<div class="upsell-grid">${items.map((item,idx)=>buildUpsellCard(item,ranked,idx)).join('')}</div>`;
+}
+
+function buildUpsellCard(item, ranked, idx){
+  const c=CATS[item.cat]||CATS.other;
+  const fw=getFramework(item,ranked);
+  const isHigh=item.cat==='power'||item.cat==='stylus'||item.price>=800;
+  return `<div class="upsell-card" style="animation-delay:${idx*.05}s">
+    <div class="uc-head">
+      <div class="uc-rank ${isHigh?'uc-rank-h':'uc-rank-m'}">#${item.rank}</div>
+      <div class="uc-title">${c.icon} ${esc(item.name)}</div>
+      ${item.price?`<div class="uc-price">均價 $${item.price.toLocaleString()}</div>`:''}
+    </div>
+    <div class="uc-body">
+      <div class="uc-tags">
+        <span class="uc-tag ut-cat">${c.label}</span>
+        <span class="uc-tag ut-info">本期 ${item.qty} 件 · #${item.rank}</span>
+        ${fw.tags.map(t=>`<span class="uc-tag ${t.cls}">${t.text}</span>`).join('')}
+      </div>
+      <div>
+        <div class="uc-lbl">① 開場問句</div>
+        <div class="uc-script">${fw.open}</div>
+      </div>
+      <div>
+        <div class="uc-lbl">② 確認需求後引導</div>
+        <div class="uc-points">${fw.points.map(p=>`<div class="uc-point"><span class="uc-point-icon">${p.icon}</span><span>${p.text}</span></div>`).join('')}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function getFramework(item, ranked){
+  const cat=item.cat;
+
+  if(cat==='stylus') return {
+    tags:[{cls:'ut-check',text:'🔍 先確認 iPad 型號'}],
+    open:`「請問您用的是哪款 iPad？」<br><small style="color:var(--muted)">→ 確認型號後再推薦，避免買錯</small>`,
+    points:[
+      {icon:'✅',text:'確認相容後，說明此款筆的<strong>主要使用情境</strong>（手寫 / 繪圖 / 簽名）'},
+      {icon:'🖊️',text:'讓顧客<strong>實際試握</strong>感受手感，引導描述自己的使用場景'},
+      {icon:'📊',text:`本期 ${item.qty} 件，屬計畫性購買，主動開口成交率高`},
+    ],
+  };
+
+  if(cat==='power') return {
+    tags:[{cls:'ut-cat',text:'💰 高單價'}],
+    open:`「您平常有在外出充電的需求嗎？還是主要放家裡備用？」<br><small style="color:var(--muted)">→ 了解使用情境後再推薦容量</small>`,
+    points:[
+      {icon:'🔋',text:'依顧客情境說明<strong>容量與適用場景</strong>（依產品標示說明，不要自行假設數值）'},
+      {icon:'📦',text:'讓顧客<strong>親手拿拿看</strong>，感受重量；視覺上往往比預期輕薄'},
+      {icon:'📊',text:`本期均價 $${item.price.toLocaleString()}，高單價商品主動推薦效益高`},
+    ],
+  };
+
+  if(cat==='charger') return {
+    tags:[{cls:'ut-check',text:'⚡ 確認瓦數需求'}],
+    open:`「請問您現在用的充電器是幾瓦的？」<br><small style="color:var(--muted)">→ 了解現況才能說明升級差異</small>`,
+    points:[
+      {icon:'⚡',text:'說明速度差異時，<strong>只講產品標示的事實</strong>，不做沒把握的比較'},
+      {icon:'🔌',text:'說明<strong>孔數與使用情境</strong>：幾台設備同時充，出門只帶一顆'},
+      {icon:'📊',text:`本期 #${item.rank}，銷售 ${item.qty} 件；黃金區主推，正面朝向顧客陳列`},
+    ],
+  };
+
+  if(cat==='cable') return {
+    tags:[{cls:'ut-check',text:'🔍 確認兩端接頭'}],
+    open:`「您的手機 / 平板是什麼接頭？充電器端呢？」<br><small style="color:var(--muted)">→ 兩端都確認，避免買錯退換</small>`,
+    points:[
+      {icon:'🔗',text:'<strong>手機端＋充電器端兩端都對了</strong>再結帳，退換機率大幅降低'},
+      {icon:'📏',text:'問<strong>長度需求</strong>：床頭充電要長、隨身攜帶短的方便'},
+      {icon:'📊',text:`本期 #${item.rank}，${item.qty} 件；顧客常自選，主動協助確認規格可減少退換`},
+    ],
+  };
+
+  return {
+    tags:[],
+    open:`「這個您有看過嗎？」<br><small style="color:var(--muted)">→ 自然開場，讓顧客先表達興趣</small>`,
+    points:[
+      {icon:'💡',text:'介紹<strong>使用情境</strong>，讓顧客說出自己的需求'},
+      {icon:'📊',text:`本期 ${item.qty} 件，排行 #${item.rank}`},
+    ],
+  };
+}
+
+function getBrand(name){
+  const n=name||'';
+  const brands=[['大通',/大通/],['ADAM',/ADAM/i],['STM',/\bSTM\b/],['綠聯',/綠聯/],
+    ['HYPER',/HYPER|Hyper/],['Anker',/Anker/i],['Apple',/Apple/i],['Belkin',/Belkin/i],
+    ['PanzerGlass',/PanzerGlass|PG/],['UAG',/\bUAG\b/]];
+  for(const [label,re] of brands) if(re.test(n)) return label;
+  return n.split(/[\s\-_]/)[0].slice(0,5)||'其他';
+}
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+// Drag & drop
+const dz=document.getElementById('drop-zone');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)handleFile(f);});
+
+// ── Init ──
+renderSidebar();
+renderMain();
+</script>
+</body>
+</html>
