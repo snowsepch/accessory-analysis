@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>右昌店｜配件陳列分析</title>
+<title>配件陳列分析</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
@@ -278,12 +278,19 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans TC',sans-seri
 </style>
 </head>
 <body>
+<script>
+const _storeAna = decodeURIComponent(new URLSearchParams(location.search).get('store') || '');
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('ana-store-hd');
+  if (el) el.textContent = _storeAna || '配件陳列';
+});
+</script>
 <div class="app">
 
 <!-- ══ SIDEBAR ══ -->
 <div class="sidebar">
   <div class="sb-header">
-    <h2>🍎 右昌店 配件陳列分析</h2>
+    <h2>🍎 <span id="ana-store-hd"></span> 配件陳列分析</h2>
     <p>上傳 POS Excel → 自動分析 → 更新示意圖</p>
   </div>
 
@@ -671,7 +678,7 @@ function renderMain(){
 
   main.innerHTML=`
     <div class="page-hd">
-      <h1>右昌店 <span>配件陳列建議</span></h1>
+      <h1>${_storeAna} <span>配件陳列建議</span></h1>
       <p>Apple Accessories Planogram · ${esc(period.label)}</p>
       <div class="hd-tags">
         <span class="htag o">排除保護貼 ／ 保護殼</span>
@@ -719,7 +726,7 @@ function renderMain(){
     </div>
 
     <div class="footer">
-      <span>右昌店 · ${esc(period.label)} · 類別碼 ${period.catLo||''}–${period.catHi||''}</span>
+      <span>${_storeAna} · ${esc(period.label)} · 類別碼 ${period.catLo||''}–${period.catHi||''}</span>
       <span>由 POS 銷售記錄自動分析</span>
     </div>`;
 }
