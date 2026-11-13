@@ -4,8 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>配件陳列分析</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<link rel="icon" href="data:,">
+<!-- SheetJS 0.20.3：修補 CVE-2023-30533（原型污染）與 CVE-2024-22363（ReDoS）。sha384 由該檔實測。 -->
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
+<!-- 字重 300/400/500/700/900、font-display:swap，與原本相同。fonts.googleapis.com 的 CSS 會隨瀏覽器改變，無法固定版本與 SRI。 -->
+<link href="https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-tc@5.3.1/300.css" rel="stylesheet" integrity="sha384-fMeI71FKg4YTsK6FuLZZRB0rDAtZxEeUEo5pcV2rrieX68SAYAA2kpr4stGuHRvo" crossorigin="anonymous">
+<link href="https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-tc@5.3.1/400.css" rel="stylesheet" integrity="sha384-X6XRC062QGnH48n64y+H6zP8JzoQKVtcSpIZbr+2W8RQ8VjVKZur7vLT3FuFzkjD" crossorigin="anonymous">
+<link href="https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-tc@5.3.1/500.css" rel="stylesheet" integrity="sha384-fkJWgi1im+qkzbVxSLYiFGQlVKFyznVWufmeQGtz6HTlgjS/Jk3e/s+rwJ1nIpVE" crossorigin="anonymous">
+<link href="https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-tc@5.3.1/700.css" rel="stylesheet" integrity="sha384-GTr6YrImhTHp7GzDBjuYnA8NLD5qaOlCqAQy4EJLMuxI+YOKzjM6dzMBlixorL5b" crossorigin="anonymous">
+<link href="https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-tc@5.3.1/900.css" rel="stylesheet" integrity="sha384-ToV8MFrNgxIIBe5v7hF9hlf30H43j6lkdY70dU/q36BgHagM1PR5ktX/uKMyrfSu" crossorigin="anonymous">
 <style>
 :root{
   --bg:#f7f7f5;--white:#fff;--text:#1a1a1a;--text2:#444;--muted:#999;
